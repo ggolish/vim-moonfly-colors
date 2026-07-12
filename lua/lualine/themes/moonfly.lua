@@ -3,27 +3,29 @@
 -- URL:      github.com/bluz71/vim-moonfly-colors
 -- License:  MIT (https://opensource.org/licenses/MIT)
 
+local palette = require("moonfly").palette
+
 local colors = {
   -- StatusLine background colors.
-  color_bg1 = "#2e2e2e",
-  color_bg2 = "#131313",
+  color_bg1 = palette.grey18,
+  color_bg2 = palette.grey7,
 
   -- Mode colors.
-  color1 = "#80a0ff",
-  color2 = "#36c692",
-  color3 = "#ae81ff",
-  color4 = "#e3c78a",
-  color5 = "#ff5189",
+  color1 = palette.blue,
+  color2 = palette.emerald,
+  color3 = palette.purple,
+  color4 = palette.yellow,
+  color5 = palette.crimson,
 
   -- Mode text color.
-  color6 = "#1c1c1c",
+  color6 = palette.grey11,
 
   -- StatusLineNC foreground.
-  color7 = "#9e9e9e",
+  color7 = palette.grey62,
 
   -- Text colors.
-  color8 = "#c6c6c6",
-  color9 = "#b2b2b2"
+  color8 = palette.white,
+  color9 = palette.grey70,
 }
 
 return {

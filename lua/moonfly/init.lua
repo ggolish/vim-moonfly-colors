@@ -1660,6 +1660,18 @@ M.sync_terminal_colors = function()
 
           M.custom_colors(dyn)
           M.style(true)
+
+          -- [FORK: refresh lualine if loaded so dynamic colors apply to status line]
+          if package.loaded["lualine"] then
+            package.loaded["lualine.themes.moonfly"] = nil
+            local lualine = package.loaded["lualine"]
+            if type(lualine.get_config) == "function" then
+              local cfg = lualine.get_config()
+              if cfg then
+                lualine.setup(cfg)
+              end
+            end
+          end
         end, 30)
       end
     end,
