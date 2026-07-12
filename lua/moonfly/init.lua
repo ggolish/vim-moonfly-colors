@@ -1547,6 +1547,21 @@ local function parse_rgb_channel(hex_str)
   return "00"
 end
 
+local function pick_readable_accent(norm_hex, bright_hex, default_hex)
+  local c_norm = norm_hex or default_hex
+  local c_bright = bright_hex or c_norm
+  local r, g, b = hex_to_rgb(c_norm)
+  local lum_norm = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  if lum_norm < 0.28 then
+    local br, bg, bb = hex_to_rgb(c_bright)
+    local lum_bright = (0.299 * br + 0.587 * bg + 0.114 * bb) / 255
+    if lum_bright > lum_norm then
+      return c_bright
+    end
+  end
+  return c_norm
+end
+
 local dynamic_state = {
   colors = {},
   timer = nil,
@@ -1614,12 +1629,12 @@ M.sync_terminal_colors = function()
 
           -- Map terminal 16 colors to moonfly palette slots
           dyn.grey0 = dynamic_state.colors[0] or grey0
-          dyn.red = dynamic_state.colors[1] or red
-          dyn.green = dynamic_state.colors[2] or green
-          dyn.yellow = dynamic_state.colors[3] or yellow
-          dyn.blue = dynamic_state.colors[4] or blue
-          dyn.violet = dynamic_state.colors[5] or violet
-          dyn.turquoise = dynamic_state.colors[6] or turquoise
+          dyn.red = pick_readable_accent(dynamic_state.colors[1], dynamic_state.colors[9], red)
+          dyn.green = pick_readable_accent(dynamic_state.colors[2], dynamic_state.colors[10], green)
+          dyn.yellow = pick_readable_accent(dynamic_state.colors[3], dynamic_state.colors[11], yellow)
+          dyn.blue = pick_readable_accent(dynamic_state.colors[4], dynamic_state.colors[12], blue)
+          dyn.violet = pick_readable_accent(dynamic_state.colors[5], dynamic_state.colors[13], violet)
+          dyn.turquoise = pick_readable_accent(dynamic_state.colors[6], dynamic_state.colors[14], turquoise)
           dyn.grey58 = dynamic_state.colors[8] or grey58
           dyn.crimson = dynamic_state.colors[9] or crimson
           dyn.emerald = dynamic_state.colors[10] or emerald
