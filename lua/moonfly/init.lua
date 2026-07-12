@@ -1562,148 +1562,154 @@ local function pick_readable_accent(norm_hex, bright_hex, default_hex)
   return c_norm
 end
 
-local dynamic_state = {
-  colors = {},
-  timer = nil,
-}
+local function find_konsole_colorscheme(name)
+  if not name or name == "" then
+    name = "Apex"
+  end
+
+  if name:match("%.colorscheme$") then
+    local path = vim.fn.expand(name)
+    if vim.fn.filereadable(path) == 1 then
+      return path
+    end
+  end
+
+  local search_paths = {
+    "~/.local/share/konsole/" .. name .. ".colorscheme",
+    "~/.config/konsole/" .. name .. ".colorscheme",
+    "/usr/share/konsole/" .. name .. ".colorscheme",
+  }
+
+  for _, p in ipairs(search_paths) do
+    local expanded = vim.fn.expand(p)
+    if vim.fn.filereadable(expanded) == 1 then
+      return expanded
+    end
+  end
+
+  return nil
+end
+
+local function parse_konsole_colorscheme(filepath)
+  local lines = vim.fn.readfile(filepath)
+  local current_section = nil
+  local parsed = {}
+
+  for _, line in ipairs(lines) do
+    local section = line:match("^%s*%[([^%]]+)%]")
+    if section then
+      current_section = section
+    elseif current_section then
+      local r, g, b = line:match("^%s*Color%s*=%s*(%d+)%s*,%s*(%d+)%s*,%s*(%d+)")
+      if r and g and b then
+        local rn, gn, bn = tonumber(r), tonumber(g), tonumber(b)
+        if rn and gn and bn and rn <= 255 and gn <= 255 and bn <= 255 then
+          parsed[current_section] = string.format("#%02x%02x%02x", rn, gn, bn)
+        end
+      end
+    end
+  end
+
+  return parsed
+end
 
 M.sync_terminal_colors = function()
-  if not vim.api.nvim_ui_send then
+  local theme_name = vim.g.moonflyKonsoleColorscheme or "Apex"
+  local filepath = find_konsole_colorscheme(theme_name)
+  if not filepath then
+    -- Fall back to default moonfly colors if Apex colorscheme is not present
     return
   end
 
-  dynamic_state.colors = {}
-
-  local augroup = vim.api.nvim_create_augroup("moonfly_dynamic_terminal", { clear = true })
-  vim.api.nvim_create_autocmd("TermResponse", {
-    group = augroup,
-    callback = function(ev)
-      local seq = ev.data and ev.data.sequence
-      if not seq or type(seq) ~= "string" then
-        return
-      end
-
-      local updated = false
-
-      -- OSC 10 (Foreground)
-      local r, g, b = seq:match("\27%]10;rgb:(%x+)/(%x+)/(%x+)")
-      if r and g and b then
-        dynamic_state.colors.fg = string.format("#%s%s%s", parse_rgb_channel(r), parse_rgb_channel(g), parse_rgb_channel(b))
-        updated = true
-      end
-
-      -- OSC 11 (Background)
-      r, g, b = seq:match("\27%]11;rgb:(%x+)/(%x+)/(%x+)")
-      if r and g and b then
-        dynamic_state.colors.bg = string.format("#%s%s%s", parse_rgb_channel(r), parse_rgb_channel(g), parse_rgb_channel(b))
-        updated = true
-      end
-
-      -- OSC 4 (ANSI palette indices 0..15)
-      for idx, cr, cg, cb in seq:gmatch("\27%]4;(%d+);rgb:(%x+)/(%x+)/(%x+)") do
-        local n = tonumber(idx)
-        if n and n >= 0 and n <= 15 then
-          dynamic_state.colors[n] = string.format("#%s%s%s", parse_rgb_channel(cr), parse_rgb_channel(cg), parse_rgb_channel(cb))
-          updated = true
-        end
-      end
-
-      if updated then
-        if dynamic_state.timer then
-          dynamic_state.timer:stop()
-          if not dynamic_state.timer:is_closing() then
-            dynamic_state.timer:close()
-          end
-        end
-
-        dynamic_state.timer = vim.defer_fn(function()
-          dynamic_state.timer = nil
-
-          local t_bg = dynamic_state.colors.bg or black
-          local t_fg = dynamic_state.colors.fg or dynamic_state.colors[7] or white
-
-          local dyn = {}
-          dyn.black = t_bg
-          dyn.bg = vim.g.moonflyTransparent and none or t_bg
-          dyn.white = t_fg
-
-          -- Map terminal 16 colors to moonfly palette slots
-          dyn.grey0 = dynamic_state.colors[0] or grey0
-          dyn.red = pick_readable_accent(dynamic_state.colors[1], dynamic_state.colors[9], red)
-          dyn.green = pick_readable_accent(dynamic_state.colors[2], dynamic_state.colors[10], green)
-          dyn.yellow = pick_readable_accent(dynamic_state.colors[3], dynamic_state.colors[11], yellow)
-          dyn.blue = pick_readable_accent(dynamic_state.colors[4], dynamic_state.colors[12], blue)
-          dyn.violet = pick_readable_accent(dynamic_state.colors[5], dynamic_state.colors[13], violet)
-          dyn.turquoise = pick_readable_accent(dynamic_state.colors[6], dynamic_state.colors[14], turquoise)
-          dyn.grey58 = dynamic_state.colors[8] or grey58
-          dyn.crimson = dynamic_state.colors[9] or crimson
-          dyn.emerald = dynamic_state.colors[10] or emerald
-          dyn.khaki = dynamic_state.colors[11] or khaki
-          dyn.sky = dynamic_state.colors[12] or sky
-          dyn.purple = dynamic_state.colors[13] or purple
-          dyn.lime = dynamic_state.colors[14] or lime
-          dyn.grey89 = dynamic_state.colors[15] or grey89
-
-          -- Derive intermediate grey tones relative to terminal bg and fg
-          dyn.grey7 = blend_colors(t_bg, t_fg, 0.05)
-          dyn.grey11 = blend_colors(t_bg, t_fg, 0.10)
-          dyn.grey13 = blend_colors(t_bg, t_fg, 0.13)
-          dyn.grey15 = blend_colors(t_bg, t_fg, 0.16)
-          dyn.grey16 = blend_colors(t_bg, t_fg, 0.18)
-          dyn.grey18 = blend_colors(t_bg, t_fg, 0.20)
-          dyn.grey23 = blend_colors(t_bg, t_fg, 0.26)
-          dyn.grey27 = blend_colors(t_bg, t_fg, 0.31)
-          dyn.grey30 = blend_colors(t_bg, t_fg, 0.37)
-          dyn.grey35 = blend_colors(t_bg, t_fg, 0.42)
-          dyn.grey39 = blend_colors(t_bg, t_fg, 0.47)
-          dyn.grey50 = blend_colors(t_bg, t_fg, 0.63)
-          dyn.grey62 = blend_colors(t_bg, t_fg, 0.79)
-          dyn.grey70 = blend_colors(t_bg, t_fg, 0.90)
-          dyn.grey1 = blend_colors(dyn.grey0, dyn.blue, 0.15)
-
-          -- Derive harmonized intermediate accent colors
-          dyn.cranberry = blend_colors(dyn.crimson, dyn.red, 0.3)
-          dyn.coral = blend_colors(dyn.orange or orange, dyn.red, 0.5)
-          dyn.cinnamon = blend_colors(dyn.orange or orange, dyn.orchid or orchid, 0.4)
-          dyn.orchid = blend_colors(dyn.crimson, t_fg, 0.3)
-          dyn.orange = blend_colors(dyn.yellow, dyn.red, 0.4)
-          dyn.lavender = blend_colors(dyn.blue, dyn.violet, 0.4)
-          dyn.mineral = blend_colors(dyn.emerald, t_bg, 0.5)
-          dyn.bay = blend_colors(dyn.blue, t_bg, 0.55)
-          dyn.slate = blend_colors(dyn.blue, dyn.grey39, 0.6)
-          dyn.haze = blend_colors(dyn.sky, dyn.grey58, 0.5)
-
-          M.custom_colors(dyn)
-          M.style(true)
-
-          -- [FORK: refresh lualine if loaded so dynamic colors apply to status line]
-          if package.loaded["lualine"] then
-            package.loaded["lualine.themes.moonfly"] = nil
-            local lualine = package.loaded["lualine"]
-            if type(lualine.get_config) == "function" then
-              local cfg = lualine.get_config()
-              if cfg then
-                lualine.setup(cfg)
-              end
-            end
-          end
-        end, 30)
-      end
-    end,
-  })
-
-  -- Send OSC 10 (foreground), OSC 11 (background), and OSC 4 (colors 0..15) queries
-  local query = "\27]10;?\27\\\27]11;?\27\\"
-  for idx = 0, 15 do
-    query = query .. string.format("\27]4;%d;?\27\\", idx)
+  local parsed = parse_konsole_colorscheme(filepath)
+  if not parsed or not parsed["Background"] then
+    return
   end
-  vim.api.nvim_ui_send(query)
+
+  local colors = {}
+  colors.bg = parsed["Background"] or parsed["Color0"]
+  colors.fg = parsed["Foreground"] or parsed["Color7"]
+  for i = 0, 7 do
+    colors[i] = parsed["Color" .. i]
+  end
+  for i = 0, 7 do
+    colors[i + 8] = parsed["Color" .. i .. "Intense"]
+  end
+
+  local t_bg = colors.bg or black
+  local t_fg = colors.fg or colors[7] or white
+
+  local dyn = {}
+  dyn.black = t_bg
+  dyn.bg = vim.g.moonflyTransparent and none or t_bg
+  dyn.white = t_fg
+
+  -- Map terminal 16 colors to moonfly palette slots
+  dyn.grey0 = colors[0] or grey0
+  dyn.red = pick_readable_accent(colors[1], colors[9], red)
+  dyn.green = pick_readable_accent(colors[2], colors[10], green)
+  dyn.yellow = pick_readable_accent(colors[3], colors[11], yellow)
+  dyn.blue = pick_readable_accent(colors[4], colors[12], blue)
+  dyn.violet = pick_readable_accent(colors[5], colors[13], violet)
+  dyn.turquoise = pick_readable_accent(colors[6], colors[14], turquoise)
+  dyn.grey58 = colors[8] or grey58
+  dyn.crimson = colors[9] or crimson
+  dyn.emerald = colors[10] or emerald
+  dyn.khaki = colors[11] or khaki
+  dyn.sky = colors[12] or sky
+  dyn.purple = colors[13] or purple
+  dyn.lime = colors[14] or lime
+  dyn.grey89 = colors[15] or grey89
+
+  -- Derive intermediate grey tones relative to terminal bg and fg
+  dyn.grey7 = blend_colors(t_bg, t_fg, 0.05)
+  dyn.grey11 = blend_colors(t_bg, t_fg, 0.10)
+  dyn.grey13 = blend_colors(t_bg, t_fg, 0.13)
+  dyn.grey15 = blend_colors(t_bg, t_fg, 0.16)
+  dyn.grey16 = blend_colors(t_bg, t_fg, 0.18)
+  dyn.grey18 = blend_colors(t_bg, t_fg, 0.20)
+  dyn.grey23 = blend_colors(t_bg, t_fg, 0.26)
+  dyn.grey27 = blend_colors(t_bg, t_fg, 0.31)
+  dyn.grey30 = blend_colors(t_bg, t_fg, 0.37)
+  dyn.grey35 = blend_colors(t_bg, t_fg, 0.42)
+  dyn.grey39 = blend_colors(t_bg, t_fg, 0.47)
+  dyn.grey50 = blend_colors(t_bg, t_fg, 0.63)
+  dyn.grey62 = blend_colors(t_bg, t_fg, 0.79)
+  dyn.grey70 = blend_colors(t_bg, t_fg, 0.90)
+  dyn.grey1 = blend_colors(dyn.grey0, dyn.blue, 0.15)
+
+  -- Derive harmonized intermediate accent colors
+  dyn.cranberry = blend_colors(dyn.crimson, dyn.red, 0.3)
+  dyn.coral = blend_colors(dyn.orange or orange, dyn.red, 0.5)
+  dyn.cinnamon = blend_colors(dyn.orange or orange, dyn.orchid or orchid, 0.4)
+  dyn.orchid = blend_colors(dyn.crimson, t_fg, 0.3)
+  dyn.orange = blend_colors(dyn.yellow, dyn.red, 0.4)
+  dyn.lavender = blend_colors(dyn.blue, dyn.violet, 0.4)
+  dyn.mineral = blend_colors(dyn.emerald, t_bg, 0.5)
+  dyn.bay = blend_colors(dyn.blue, t_bg, 0.55)
+  dyn.slate = blend_colors(dyn.blue, dyn.grey39, 0.6)
+  dyn.haze = blend_colors(dyn.sky, dyn.grey58, 0.5)
+
+  M.custom_colors(dyn)
+  M.style(true)
+
+  -- [FORK: refresh lualine if loaded so dynamic colors apply to status line]
+  if package.loaded["lualine"] then
+    package.loaded["lualine.themes.moonfly"] = nil
+    local lualine = package.loaded["lualine"]
+    if type(lualine.get_config) == "function" then
+      local cfg = lualine.get_config()
+      if cfg then
+        lualine.setup(cfg)
+      end
+    end
+  end
 end
 
 if vim.api.nvim_create_user_command then
   vim.api.nvim_create_user_command("MoonflySyncTerminal", function()
     M.sync_terminal_colors()
-  end, { desc = "Synchronize moonfly colorscheme with terminal theme" })
+  end, { desc = "Synchronize moonfly colorscheme with Konsole theme" })
 end
 
 return M

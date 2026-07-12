@@ -90,11 +90,13 @@ first 16 terminal colors then add the following to your initialization file:
 ------------------------------------------------------------------------------
 moonflyDynamicColors~                                   *g:moonflyDynamicColors*
 
-The `moonflyDynamicColors` option specifies whether to query the host terminal
-emulator at runtime using OSC escape sequences (`OSC 10`, `OSC 11`, `OSC 4`) to
-dynamically load and synchronize colors so the colorscheme matches the terminal
-theme. By default on this fork, this option is enabled (`v:true`). If you
-prefer static moonfly colors, add the following to your initialization file:
+The `moonflyDynamicColors` option specifies whether to dynamically synchronize
+Neovim's palette and highlights with your Konsole colorscheme (`Apex` by
+default). By default on this fork, this option is enabled (`v:true`). If the
+Konsole colorscheme is not present on your system, moonfly falls back to
+default static moonfly colors.
+
+If you prefer static moonfly colors, add the following to your initialization file:
 >
   -- Lua initialization file
   vim.g.moonflyDynamicColors = false
@@ -102,14 +104,12 @@ prefer static moonfly colors, add the following to your initialization file:
   " Vimscript initialization file
   let g:moonflyDynamicColors = v:false
 <
-You can also run `:MoonflySyncTerminal` to synchronize colors on demand.
-
-Note on Terminal Multiplexers:
-- tmux: Supported natively.
-- Zellij: Zellij currently intercepts OSC color queries (OSC 4, 10, 11) within
-  its internal server layer and does not forward them to the host terminal
-  emulator. As a result, dynamic color detection cannot query the host
-  terminal when running inside a Zellij session.
+You can customize the Konsole colorscheme loaded via `g:moonflyKonsoleColorscheme`
+(default `"Apex"`):
+>
+  vim.g.moonflyKonsoleColorscheme = "Apex"
+<
+You can also run `:MoonflySyncTerminal` to reload the colorscheme on demand.
 ------------------------------------------------------------------------------
 moonflyTransparent~                                     *g:moonflyTransparent*
 

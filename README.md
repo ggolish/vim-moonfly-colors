@@ -280,7 +280,9 @@ let g:moonflyTerminalColors = v:false
 
 ### moonflyDynamicColors
 
-The `moonflyDynamicColors` option specifies whether to query the host terminal emulator at runtime using OSC escape sequences (`OSC 10`, `OSC 11`, `OSC 4`) to dynamically synchronize Neovim's palette and highlights with the active terminal theme. By default on this fork, this option is **enabled**. If you prefer static moonfly colors, add the following to your initialization file:
+The `moonflyDynamicColors` option specifies whether to dynamically synchronize Neovim's palette and highlights with your Konsole colorscheme (`Apex` by default). By default on this fork, this option is **enabled**. If the Konsole colorscheme file is not present on your system, `moonfly` automatically falls back to default static moonfly colors.
+
+If you prefer static moonfly colors at all times, add the following to your initialization file:
 
 ```lua
 -- Lua initialization file
@@ -292,13 +294,13 @@ vim.g.moonflyDynamicColors = false
 let g:moonflyDynamicColors = v:false
 ```
 
-You can also execute `:MoonflySyncTerminal` at any time to re-synchronize colors on demand.
+You can customize the Konsole colorscheme name loaded by setting `vim.g.moonflyKonsoleColorscheme` (default: `"Apex"`):
 
-> [!NOTE]
-> **Terminal Multiplexer Compatibility**:
-> Dynamic color detection relies on host terminal escape sequence queries (`OSC 10`, `OSC 11`, `OSC 4`).
-> - **tmux**: Supported natively.
-> - **Zellij**: Zellij currently intercepts `OSC 4/10/11` color queries within its internal server layer and does not pass them through to the underlying host terminal emulator. As a result, dynamic terminal color synchronization cannot query the host terminal when running inside a Zellij session.
+```lua
+vim.g.moonflyKonsoleColorscheme = "Apex"
+```
+
+You can also execute `:MoonflySyncTerminal` at any time to reload the colorscheme on demand.
 
 ---
 

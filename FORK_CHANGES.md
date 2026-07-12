@@ -1,20 +1,23 @@
 # Moonfly Fork: Dynamic Terminal Colors
 
-This branch (`dynamic`) extends the **moonfly** Neovim colorscheme with dynamic terminal color loading. It queries the host terminal emulator at runtime for its actual RGB colors so that Neovim's UI matches the active terminal color theme while maintaining moonfly's styling and contrast hierarchy.
+This branch (`dynamic`) extends the **moonfly** Neovim colorscheme with dynamic Konsole theme loading. It reads your active Konsole colorscheme (`Apex` by default) so that Neovim's UI matches the terminal color theme while maintaining moonfly's styling and contrast hierarchy. If the Konsole colorscheme file is not present on the system, it gracefully falls back to default moonfly colors.
 
 ## Features Added
 
-1. **Dynamic Terminal Color Loading via OSC Queries**:
-   - Queries `OSC 10` (Foreground), `OSC 11` (Background), and `OSC 4;0..15` (ANSI Palette 0–15) using `vim.api.nvim_ui_send(...)`.
-   - Listens for terminal responses via Neovim's `TermResponse` autocommand event.
-   - Dynamically interpolates UI grey tones (`grey1`, `grey7`..`grey70`) between the terminal's actual background and foreground colors.
-   - Blends intermediate accent colors (`cranberry`, `coral`, `cinnamon`, `orchid`, `orange`, `lavender`, `mineral`, `bay`, `slate`, `haze`) based on the terminal's palette.
+1. **Direct Konsole Colorscheme Loading (`Apex`)**:
+   - Locates and parses Konsole `.colorscheme` files (`~/.local/share/konsole/Apex.colorscheme`, `/usr/share/konsole/`, etc.).
+   - Dynamically maps `[Background]`, `[Foreground]`, `[Color0..7]`, and `[Color0Intense..Color7Intense]` into the moonfly palette.
+   - Dynamically interpolates UI grey tones (`grey1`, `grey7`..`grey70`) between the background and foreground colors.
+   - Blends intermediate accent colors (`cranberry`, `coral`, `cinnamon`, `orchid`, `orange`, `lavender`, `mineral`, `bay`, `slate`, `haze`).
+   - Automatically refreshes `lualine.themes.moonfly` if loaded.
+   - Falls back to default static moonfly colors if the Konsole colorscheme file is not found.
 
-2. **Configuration Option**:
-   - `g:moonflyDynamicColors` (Lua: `vim.g.moonflyDynamicColors`): Controls whether dynamic terminal color loading is enabled. Defaults to `true` on this fork. Set to `false` to use standard static moonfly colors.
+2. **Configuration Options**:
+   - `g:moonflyDynamicColors` (Lua: `vim.g.moonflyDynamicColors`): Controls whether dynamic theme loading is enabled. Defaults to `true` on this fork.
+   - `g:moonflyKonsoleColorscheme` (Lua: `vim.g.moonflyKonsoleColorscheme`): Specifies the Konsole colorscheme name to load. Defaults to `"Apex"`.
 
 3. **User Command**:
-   - `:MoonflySyncTerminal`: Re-queries the terminal emulator and updates all highlight groups on demand.
+   - `:MoonflySyncTerminal`: Re-loads the Konsole colorscheme and updates all highlight groups and statuslines on demand.
 
 ---
 
