@@ -1450,7 +1450,7 @@ M.style = function(is_dynamic_update)
   }
 
   -- [FORK: dynamic terminal color loading]
-  if not is_dynamic_update and g.moonflyDynamicColors ~= false and vim.api.nvim_ui_send then
+  if not is_dynamic_update and vim.g.moonflyDynamicColors ~= false and vim.api.nvim_ui_send then
     M.sync_terminal_colors()
   end
 end
@@ -1609,7 +1609,7 @@ M.sync_terminal_colors = function()
 
           local dyn = {}
           dyn.black = t_bg
-          dyn.bg = g.moonflyTransparent and none or t_bg
+          dyn.bg = vim.g.moonflyTransparent and none or t_bg
           dyn.white = t_fg
 
           -- Map terminal 16 colors to moonfly palette slots
