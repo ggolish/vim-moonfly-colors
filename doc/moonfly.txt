@@ -9,6 +9,7 @@ Default option values:
   let g:moonflyNormalPmenu = v:false
   let g:moonflyNormalFloat = v:false
   let g:moonflyTerminalColors = v:true
+  let g:moonflyDynamicColors = v:true
   let g:moonflyTransparent = v:false
   let g:moonflyUndercurls = v:true
   let g:moonflyUnderlineMatchParen = v:false
@@ -86,6 +87,22 @@ first 16 terminal colors then add the following to your initialization file:
   " Vimscript initialization file
   let g:moonflyTerminalColors = v:false
 <
+------------------------------------------------------------------------------
+moonflyDynamicColors~                                   *g:moonflyDynamicColors*
+
+The `moonflyDynamicColors` option specifies whether to query the host terminal
+emulator at runtime using OSC escape sequences (`OSC 10`, `OSC 11`, `OSC 4`) to
+dynamically load and synchronize colors so the colorscheme matches the terminal
+theme. By default on this fork, this option is enabled (`v:true`). If you
+prefer static moonfly colors, add the following to your initialization file:
+>
+  -- Lua initialization file
+  vim.g.moonflyDynamicColors = false
+
+  " Vimscript initialization file
+  let g:moonflyDynamicColors = v:false
+<
+You can also run `:MoonflySyncTerminal` to synchronize colors on demand.
 ------------------------------------------------------------------------------
 moonflyTransparent~                                     *g:moonflyTransparent*
 

@@ -158,6 +158,7 @@ let g:lightline = { 'colorscheme': 'moonfly' }
 | [moonflyNormalPmenu](https://github.com/bluz71/vim-moonfly-colors#moonflynormalpmenu)                 | Disabled
 | [moonflyNormalFloat](https://github.com/bluz71/vim-moonfly-colors#moonflynormalfloat)                 | Disabled
 | [moonflyTerminalColors](https://github.com/bluz71/vim-moonfly-colors#moonflyterminalcolors)           | Enabled
+| [moonflyDynamicColors](#moonflydynamiccolors)                                                         | Enabled
 | [moonflyTransparent](https://github.com/bluz71/vim-moonfly-colors#moonflytransparent)                 | Disabled
 | [moonflyUndercurls](https://github.com/bluz71/vim-moonfly-colors#moonflyundercurls)                   | Enabled
 | [moonflyUnderlineMatchParen](https://github.com/bluz71/vim-moonfly-colors#moonflyunderlinematchparen) | Disabled
@@ -274,6 +275,24 @@ vim.g.moonflyTerminalColors = false
 " Vimscript initialization file
 let g:moonflyTerminalColors = v:false
 ```
+
+---
+
+### moonflyDynamicColors
+
+The `moonflyDynamicColors` option specifies whether to query the host terminal emulator at runtime using OSC escape sequences (`OSC 10`, `OSC 11`, `OSC 4`) to dynamically synchronize Neovim's palette and highlights with the active terminal theme. By default on this fork, this option is **enabled**. If you prefer static moonfly colors, add the following to your initialization file:
+
+```lua
+-- Lua initialization file
+vim.g.moonflyDynamicColors = false
+```
+
+```vim
+" Vimscript initialization file
+let g:moonflyDynamicColors = v:false
+```
+
+You can also execute `:MoonflySyncTerminal` at any time to re-synchronize colors on demand.
 
 ---
 

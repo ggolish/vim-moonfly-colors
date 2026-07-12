@@ -18,6 +18,8 @@ let g:moonflyItalics = get(g:, 'moonflyItalics', v:true)
 let g:moonflyNormalPmenu = get(g:, 'moonflyNormalPmenu', v:false)
 let g:moonflyNormalFloat = get(g:, 'moonflyNormalFloat', v:false)
 let g:moonflyTerminalColors = get(g:, 'moonflyTerminalColors', v:true)
+" [FORK: dynamic terminal color loading]
+let g:moonflyDynamicColors = get(g:, 'moonflyDynamicColors', v:true)
 let g:moonflyTransparent = get(g:, 'moonflyTransparent', v:false)
 let g:moonflyUndercurls = get(g:, 'moonflyUndercurls', v:true)
 let g:moonflyUnderlineMatchParen = get(g:, 'moonflyUnderlineMatchParen', v:false)

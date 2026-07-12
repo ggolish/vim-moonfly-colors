@@ -105,7 +105,8 @@ local M = {}
 
 M.palette = moonfly_palette()
 
-M.style = function()
+-- [FORK: dynamic terminal color loading]
+M.style = function(is_dynamic_update)
   -------------------------------------------------------------------------
   -- Custom styling groups
   -------------------------------------------------------------------------
@@ -1447,6 +1448,11 @@ M.style = function()
     ["header"] = { "fg", "CursorLineNr" },
     ["gutter"] = { "bg", "Normal" },
   }
+
+  -- [FORK: dynamic terminal color loading]
+  if not is_dynamic_update and g.moonflyDynamicColors ~= false and vim.api.nvim_ui_send then
+    M.sync_terminal_colors()
+  end
 end
 
 -- User customization of theme colors.
@@ -1498,6 +1504,179 @@ M.custom_colors = function(colors)
 
   -- Rebuild the palette with custom colors.
   M.palette = moonfly_palette()
+end
+
+-- [FORK: dynamic terminal color loading]
+-------------------------------------------------------------------------
+-- Dynamic Terminal Color Engine (OSC 4 / 10 / 11 queries)
+-------------------------------------------------------------------------
+
+local function hex_to_rgb(hex)
+  hex = hex:gsub("#", "")
+  local r = tonumber(hex:sub(1, 2), 16) or 0
+  local g = tonumber(hex:sub(3, 4), 16) or 0
+  local b = tonumber(hex:sub(5, 6), 16) or 0
+  return r, g, b
+end
+
+local function rgb_to_hex_str(r, g, b)
+  r = math.min(255, math.max(0, math.floor(r + 0.5)))
+  g = math.min(255, math.max(0, math.floor(g + 0.5)))
+  b = math.min(255, math.max(0, math.floor(b + 0.5)))
+  return string.format("#%02x%02x%02x", r, g, b)
+end
+
+local function blend_colors(hex1, hex2, factor)
+  local r1, g1, b1 = hex_to_rgb(hex1)
+  local r2, g2, b2 = hex_to_rgb(hex2)
+  local r = r1 + (r2 - r1) * factor
+  local g = g1 + (g2 - g1) * factor
+  local b = b1 + (b2 - b1) * factor
+  return rgb_to_hex_str(r, g, b)
+end
+
+local function parse_rgb_channel(hex_str)
+  if not hex_str then
+    return "00"
+  end
+  if #hex_str >= 2 then
+    return hex_str:sub(1, 2):lower()
+  elseif #hex_str == 1 then
+    return (hex_str .. hex_str):lower()
+  end
+  return "00"
+end
+
+local dynamic_state = {
+  colors = {},
+  timer = nil,
+}
+
+M.sync_terminal_colors = function()
+  if not vim.api.nvim_ui_send then
+    return
+  end
+
+  dynamic_state.colors = {}
+
+  local augroup = vim.api.nvim_create_augroup("moonfly_dynamic_terminal", { clear = true })
+  vim.api.nvim_create_autocmd("TermResponse", {
+    group = augroup,
+    callback = function(ev)
+      local seq = ev.data and ev.data.sequence
+      if not seq or type(seq) ~= "string" then
+        return
+      end
+
+      local updated = false
+
+      -- OSC 10 (Foreground)
+      local r, g, b = seq:match("\27%]10;rgb:(%x+)/(%x+)/(%x+)")
+      if r and g and b then
+        dynamic_state.colors.fg = string.format("#%s%s%s", parse_rgb_channel(r), parse_rgb_channel(g), parse_rgb_channel(b))
+        updated = true
+      end
+
+      -- OSC 11 (Background)
+      r, g, b = seq:match("\27%]11;rgb:(%x+)/(%x+)/(%x+)")
+      if r and g and b then
+        dynamic_state.colors.bg = string.format("#%s%s%s", parse_rgb_channel(r), parse_rgb_channel(g), parse_rgb_channel(b))
+        updated = true
+      end
+
+      -- OSC 4 (ANSI palette indices 0..15)
+      for idx, cr, cg, cb in seq:gmatch("\27%]4;(%d+);rgb:(%x+)/(%x+)/(%x+)") do
+        local n = tonumber(idx)
+        if n and n >= 0 and n <= 15 then
+          dynamic_state.colors[n] = string.format("#%s%s%s", parse_rgb_channel(cr), parse_rgb_channel(cg), parse_rgb_channel(cb))
+          updated = true
+        end
+      end
+
+      if updated then
+        if dynamic_state.timer then
+          dynamic_state.timer:stop()
+          if not dynamic_state.timer:is_closing() then
+            dynamic_state.timer:close()
+          end
+        end
+
+        dynamic_state.timer = vim.defer_fn(function()
+          dynamic_state.timer = nil
+
+          local t_bg = dynamic_state.colors.bg or black
+          local t_fg = dynamic_state.colors.fg or dynamic_state.colors[7] or white
+
+          local dyn = {}
+          dyn.black = t_bg
+          dyn.bg = g.moonflyTransparent and none or t_bg
+          dyn.white = t_fg
+
+          -- Map terminal 16 colors to moonfly palette slots
+          dyn.grey0 = dynamic_state.colors[0] or grey0
+          dyn.red = dynamic_state.colors[1] or red
+          dyn.green = dynamic_state.colors[2] or green
+          dyn.yellow = dynamic_state.colors[3] or yellow
+          dyn.blue = dynamic_state.colors[4] or blue
+          dyn.violet = dynamic_state.colors[5] or violet
+          dyn.turquoise = dynamic_state.colors[6] or turquoise
+          dyn.grey58 = dynamic_state.colors[8] or grey58
+          dyn.crimson = dynamic_state.colors[9] or crimson
+          dyn.emerald = dynamic_state.colors[10] or emerald
+          dyn.khaki = dynamic_state.colors[11] or khaki
+          dyn.sky = dynamic_state.colors[12] or sky
+          dyn.purple = dynamic_state.colors[13] or purple
+          dyn.lime = dynamic_state.colors[14] or lime
+          dyn.grey89 = dynamic_state.colors[15] or grey89
+
+          -- Derive intermediate grey tones relative to terminal bg and fg
+          dyn.grey7 = blend_colors(t_bg, t_fg, 0.05)
+          dyn.grey11 = blend_colors(t_bg, t_fg, 0.10)
+          dyn.grey13 = blend_colors(t_bg, t_fg, 0.13)
+          dyn.grey15 = blend_colors(t_bg, t_fg, 0.16)
+          dyn.grey16 = blend_colors(t_bg, t_fg, 0.18)
+          dyn.grey18 = blend_colors(t_bg, t_fg, 0.20)
+          dyn.grey23 = blend_colors(t_bg, t_fg, 0.26)
+          dyn.grey27 = blend_colors(t_bg, t_fg, 0.31)
+          dyn.grey30 = blend_colors(t_bg, t_fg, 0.37)
+          dyn.grey35 = blend_colors(t_bg, t_fg, 0.42)
+          dyn.grey39 = blend_colors(t_bg, t_fg, 0.47)
+          dyn.grey50 = blend_colors(t_bg, t_fg, 0.63)
+          dyn.grey62 = blend_colors(t_bg, t_fg, 0.79)
+          dyn.grey70 = blend_colors(t_bg, t_fg, 0.90)
+          dyn.grey1 = blend_colors(dyn.grey0, dyn.blue, 0.15)
+
+          -- Derive harmonized intermediate accent colors
+          dyn.cranberry = blend_colors(dyn.crimson, dyn.red, 0.3)
+          dyn.coral = blend_colors(dyn.orange or orange, dyn.red, 0.5)
+          dyn.cinnamon = blend_colors(dyn.orange or orange, dyn.orchid or orchid, 0.4)
+          dyn.orchid = blend_colors(dyn.crimson, t_fg, 0.3)
+          dyn.orange = blend_colors(dyn.yellow, dyn.red, 0.4)
+          dyn.lavender = blend_colors(dyn.blue, dyn.violet, 0.4)
+          dyn.mineral = blend_colors(dyn.emerald, t_bg, 0.5)
+          dyn.bay = blend_colors(dyn.blue, t_bg, 0.55)
+          dyn.slate = blend_colors(dyn.blue, dyn.grey39, 0.6)
+          dyn.haze = blend_colors(dyn.sky, dyn.grey58, 0.5)
+
+          M.custom_colors(dyn)
+          M.style(true)
+        end, 30)
+      end
+    end,
+  })
+
+  -- Send OSC 10 (foreground), OSC 11 (background), and OSC 4 (colors 0..15) queries
+  local query = "\27]10;?\27\\\27]11;?\27\\"
+  for idx = 0, 15 do
+    query = query .. string.format("\27]4;%d;?\27\\", idx)
+  end
+  vim.api.nvim_ui_send(query)
+end
+
+if vim.api.nvim_create_user_command then
+  vim.api.nvim_create_user_command("MoonflySyncTerminal", function()
+    M.sync_terminal_colors()
+  end, { desc = "Synchronize moonfly colorscheme with terminal theme" })
 end
 
 return M
