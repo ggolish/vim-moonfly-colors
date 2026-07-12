@@ -1562,6 +1562,19 @@ local function pick_readable_accent(norm_hex, bright_hex, default_hex)
   return c_norm
 end
 
+local function pick_surface_grey0(c_zero, t_bg, t_fg, default_grey0)
+  if not c_zero or not t_bg then
+    return default_grey0
+  end
+  local r0, g0, b0 = hex_to_rgb(c_zero)
+  local rbg, gbg, bbg = hex_to_rgb(t_bg)
+  local dist = math.abs(r0 - rbg) + math.abs(g0 - gbg) + math.abs(b0 - bbg)
+  if dist < 45 then
+    return blend_colors(t_bg, t_fg, 0.22)
+  end
+  return c_zero
+end
+
 local function find_konsole_colorscheme(name)
   if not name or name == "" then
     name = "Apex"
@@ -1645,7 +1658,7 @@ M.sync_terminal_colors = function()
   dyn.white = t_fg
 
   -- Map terminal 16 colors to moonfly palette slots
-  dyn.grey0 = colors[0] or grey0
+  dyn.grey0 = pick_surface_grey0(colors[0], t_bg, t_fg, grey0)
   dyn.red = pick_readable_accent(colors[1], colors[9], red)
   dyn.green = pick_readable_accent(colors[2], colors[10], green)
   dyn.yellow = pick_readable_accent(colors[3], colors[11], yellow)
