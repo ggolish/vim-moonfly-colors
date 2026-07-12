@@ -103,6 +103,13 @@ prefer static moonfly colors, add the following to your initialization file:
   let g:moonflyDynamicColors = v:false
 <
 You can also run `:MoonflySyncTerminal` to synchronize colors on demand.
+
+Note on Terminal Multiplexers:
+- tmux: Supported natively.
+- Zellij: Zellij currently intercepts OSC color queries (OSC 4, 10, 11) within
+  its internal server layer and does not forward them to the host terminal
+  emulator. As a result, dynamic color detection cannot query the host
+  terminal when running inside a Zellij session.
 ------------------------------------------------------------------------------
 moonflyTransparent~                                     *g:moonflyTransparent*
 

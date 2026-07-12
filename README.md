@@ -294,6 +294,12 @@ let g:moonflyDynamicColors = v:false
 
 You can also execute `:MoonflySyncTerminal` at any time to re-synchronize colors on demand.
 
+> [!NOTE]
+> **Terminal Multiplexer Compatibility**:
+> Dynamic color detection relies on host terminal escape sequence queries (`OSC 10`, `OSC 11`, `OSC 4`).
+> - **tmux**: Supported natively.
+> - **Zellij**: Zellij currently intercepts `OSC 4/10/11` color queries within its internal server layer and does not pass them through to the underlying host terminal emulator. As a result, dynamic terminal color synchronization cannot query the host terminal when running inside a Zellij session.
+
 ---
 
 ### moonflyTransparent
