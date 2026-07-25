@@ -28,19 +28,37 @@ local colors = {
   color9 = palette.grey70,
 }
 
+local function relative_luminance(hex)
+  if type(hex) ~= "string" or not hex:match("^#%x%x%x%x%x%x$") then
+    return nil
+  end
+
+  local channels = {}
+  for index = 2, 6, 2 do
+    local channel = (tonumber(hex:sub(index, index + 1), 16) or 0) / 255
+    channels[#channels + 1] = channel <= 0.04045 and channel / 12.92
+      or ((channel + 0.055) / 1.055) ^ 2.4
+  end
+
+  return channels[1] * 0.2126 + channels[2] * 0.7152 + channels[3] * 0.0722
+end
+
+local function contrast_ratio(color1, color2)
+  local luminance1 = relative_luminance(color1)
+  local luminance2 = relative_luminance(color2)
+  if not luminance1 or not luminance2 then
+    return nil
+  end
+  return (math.max(luminance1, luminance2) + 0.05) / (math.min(luminance1, luminance2) + 0.05)
+end
+
 local function contrast_fg(bg_hex)
-  if not bg_hex or type(bg_hex) ~= "string" or #bg_hex < 7 then
+  local background_contrast = contrast_ratio(bg_hex, palette.black)
+  local foreground_contrast = contrast_ratio(bg_hex, palette.white)
+  if not background_contrast or not foreground_contrast then
     return palette.grey11
   end
-  local r = tonumber(bg_hex:sub(2, 3), 16) or 0
-  local g = tonumber(bg_hex:sub(4, 5), 16) or 0
-  local b = tonumber(bg_hex:sub(6, 7), 16) or 0
-  local luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-  if luminance < 0.45 then
-    return palette.white
-  else
-    return palette.grey11
-  end
+  return background_contrast >= foreground_contrast and palette.black or palette.white
 end
 
 return {
